@@ -113,7 +113,10 @@ const HandTracker: React.FC = () => {
           );
         } else if (err.name === "NotFoundError") {
           console.warn("No camera found. Please connect a camera device.");
-        } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        } else if (
+          err.name === "NotReadableError" ||
+          err.name === "TrackStartError"
+        ) {
           console.warn(
             "Camera is already in use by another application. Please close other apps using the camera and refresh the page."
           );
