@@ -20,7 +20,7 @@ import InstaxGallery from "./InstaxGallery";
 import { useStore } from "../store";
 
 const Snow: React.FC = () => {
-  const count = 1500;
+  const count = 800; // Reduced for better performance
   const mesh = useRef<THREE.Points>(null);
 
   // Generate Soft Flake Texture
@@ -54,23 +54,27 @@ const Snow: React.FC = () => {
     return { positions: p, velocities: v };
   }, [count]);
 
-  useFrame(() => {
+  useFrame((state, delta) => {
     if (!mesh.current) return;
     const posAttr = mesh.current.geometry.attributes.position;
     const pos = posAttr.array as Float32Array;
 
+    // Use delta time for consistent speed regardless of framerate
+    const speed = delta * 60; // Normalize to 60fps
+
     for (let i = 0; i < count; i++) {
-      // Fall down
-      pos[i * 3 + 1] -= velocities[i * 3 + 1];
+      const i3 = i * 3;
+      // Fall down (multiply by speed for frame-independent movement)
+      pos[i3 + 1] -= velocities[i3 + 1] * speed;
       // Drift
-      pos[i * 3] += velocities[i * 3];
-      pos[i * 3 + 2] += velocities[i * 3 + 2];
+      pos[i3] += velocities[i3] * speed;
+      pos[i3 + 2] += velocities[i3 + 2] * speed;
 
       // Reset
-      if (pos[i * 3 + 1] < -20) {
-        pos[i * 3 + 1] = 40;
-        pos[i * 3] = (Math.random() - 0.5) * 100;
-        pos[i * 3 + 2] = (Math.random() - 0.5) * 100;
+      if (pos[i3 + 1] < -20) {
+        pos[i3 + 1] = 40;
+        pos[i3] = (Math.random() - 0.5) * 100;
+        pos[i3 + 2] = (Math.random() - 0.5) * 100;
       }
     }
     posAttr.needsUpdate = true;
@@ -837,7 +841,7 @@ const Snowman: React.FC = () => {
 const PresentsGroup: React.FC = () => {
   const presents = useMemo(() => {
     const items = [];
-    const count = 20;
+    const count = 15; // Reduced for better performance
     // Luxurious holiday palette
     const colors = [
       "#8b0000", // Deep Red
@@ -897,58 +901,55 @@ const SceneContent: React.FC = () => {
   const viewMode = useStore((state) => state.viewMode);
 
   useFrame((state, delta) => {
-    if (groupRef.current) {
-      // FREEZE ROTATION IN VIEW MODE
-      // If the user is inspecting a photo, we stop the background from spinning/resetting
-      // so everything stays perfectly still.
-      if (viewMode) return;
+    if (!groupRef.current) return;
 
-      const isGalaxy = mode === "GALAXY";
+    // FREEZE ROTATION IN VIEW MODE
+    // If the user is inspecting a photo, we stop the background from spinning/resetting
+    // so everything stays perfectly still.
+    if (viewMode) return;
 
-      // In TREE mode, keep rotation stable (no tilting)
-      if (!isGalaxy) {
-        // Smoothly return to neutral rotation (0, 0, 0)
-        const lambda = 4.0;
-        const alpha = 1 - Math.exp(-lambda * delta);
-        groupRef.current.rotation.x = THREE.MathUtils.lerp(
-          groupRef.current.rotation.x,
-          0,
-          alpha
-        );
-        groupRef.current.rotation.y = THREE.MathUtils.lerp(
-          groupRef.current.rotation.y,
-          0,
-          alpha
-        );
-        return;
-      }
+    const isGalaxy = mode === "GALAXY";
 
-      // GALAXY mode: Apply hand-controlled rotation
-      let targetRotX = 0;
-      let targetRotY = 0;
-
-      // Increased sensitivity for Galaxy mode as requested (was 0.8/0.5)
-      const sensitivityX = 2.5;
-      const sensitivityY = 1.5;
-
-      targetRotX = handPosition.y * sensitivityY;
-      targetRotY = handPosition.x * sensitivityX;
-
-      // Smooth Damp
+    // In TREE mode, keep rotation stable (no tilting)
+    if (!isGalaxy) {
+      // Smoothly return to neutral rotation (0, 0, 0)
       const lambda = 4.0;
       const alpha = 1 - Math.exp(-lambda * delta);
-
       groupRef.current.rotation.x = THREE.MathUtils.lerp(
         groupRef.current.rotation.x,
-        targetRotX,
+        0,
         alpha
       );
       groupRef.current.rotation.y = THREE.MathUtils.lerp(
         groupRef.current.rotation.y,
-        targetRotY,
+        0,
         alpha
       );
+      return;
     }
+
+    // GALAXY mode: Apply hand-controlled rotation
+    // Increased sensitivity for Galaxy mode as requested (was 0.8/0.5)
+    const sensitivityX = 2.5;
+    const sensitivityY = 1.5;
+
+    const targetRotX = handPosition.y * sensitivityY;
+    const targetRotY = handPosition.x * sensitivityX;
+
+    // Smooth Damp with proper delta time
+    const lambda = 4.0;
+    const alpha = 1 - Math.exp(-lambda * delta);
+
+    groupRef.current.rotation.x = THREE.MathUtils.lerp(
+      groupRef.current.rotation.x,
+      targetRotX,
+      alpha
+    );
+    groupRef.current.rotation.y = THREE.MathUtils.lerp(
+      groupRef.current.rotation.y,
+      targetRotY,
+      alpha
+    );
   });
 
   return (
@@ -973,9 +974,16 @@ const Experience: React.FC = () => {
     <div className="w-full h-screen bg-black relative">
       <Canvas
         camera={{ position: [0, 2, 45], fov: 45 }}
-        gl={{ antialias: true, toneMappingExposure: 1.2 }}
-        dpr={[1, 2]}
+        gl={{
+          antialias: true,
+          toneMappingExposure: 1.2,
+          powerPreference: "high-performance",
+          stencil: false,
+          depth: true,
+        }}
+        dpr={[1, 1.5]}
         shadows
+        performance={{ min: 0.5 }}
       >
         <Suspense fallback={null}>
           <color attach="background" args={["#010103"]} />
@@ -1012,14 +1020,14 @@ const Experience: React.FC = () => {
           <Stars
             radius={100}
             depth={50}
-            count={2000}
+            count={1000}
             factor={4}
             saturation={1}
             fade
             speed={0.5}
           />
           <Sparkles
-            count={200}
+            count={100}
             scale={20}
             size={2}
             speed={0.2}
@@ -1042,13 +1050,13 @@ const Experience: React.FC = () => {
           <EffectComposer enableNormalPass={false}>
             {/* Subtle bloom for the shiny highlights */}
             <Bloom
-              luminanceThreshold={1}
-              mipmapBlur
-              intensity={0.5}
-              radius={0.3}
+              luminanceThreshold={1.2}
+              mipmapBlur={false}
+              intensity={0.3}
+              radius={0.2}
             />
-            <Noise opacity={0.02} />
-            <Vignette eskil={false} offset={0.1} darkness={0.8} />
+            <Noise opacity={0.01} />
+            <Vignette eskil={false} offset={0.1} darkness={0.7} />
           </EffectComposer>
 
           {/* Controls - Increased autoRotateSpeed */}
