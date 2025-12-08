@@ -893,34 +893,47 @@ const PresentsGroup: React.FC = () => {
   );
 };
 
-// Camera Controller to zoom out in TREE mode
+// Camera Controller to set initial zoom in TREE mode (allows manual zoom after)
 const CameraController: React.FC<{ controlsRef: React.RefObject<any> }> = ({
   controlsRef,
 }) => {
   const mode = useStore((state) => state.mode);
   const viewMode = useStore((state) => state.viewMode);
+  const lastModeRef = useRef<string>(mode);
+  const hasSetInitialZoomRef = useRef<boolean>(false);
 
   useFrame((state, delta) => {
     if (!controlsRef.current || viewMode) return;
 
-    // In TREE mode, zoom out to max distance
+    // Only set initial zoom when switching TO TREE mode, then allow manual control
     if (mode === "TREE") {
-      const targetDistance = 60; // maxDistance
-      const camera = state.camera;
-      const currentDistance = camera.position.length();
+      // Check if we just switched to TREE mode
+      if (lastModeRef.current !== "TREE" || !hasSetInitialZoomRef.current) {
+        const targetDistance = 60; // maxDistance
+        const camera = state.camera;
+        const currentDistance = camera.position.length();
 
-      // Smoothly zoom out if not already at max
-      if (currentDistance < targetDistance - 0.5) {
-        const direction = camera.position.clone().normalize();
-        const newDistance = THREE.MathUtils.lerp(
-          currentDistance,
-          targetDistance,
-          delta * 2
-        );
-        camera.position.copy(direction.multiplyScalar(newDistance));
-        controlsRef.current.update();
+        // Smoothly zoom out to max only on initial switch
+        if (currentDistance < targetDistance - 0.5) {
+          const direction = camera.position.clone().normalize();
+          const newDistance = THREE.MathUtils.lerp(
+            currentDistance,
+            targetDistance,
+            delta * 3
+          );
+          camera.position.copy(direction.multiplyScalar(newDistance));
+          controlsRef.current.update();
+        } else {
+          // Once at max, allow manual zooming
+          hasSetInitialZoomRef.current = true;
+        }
       }
+    } else {
+      // Reset flag when not in TREE mode
+      hasSetInitialZoomRef.current = false;
     }
+
+    lastModeRef.current = mode;
   });
 
   return null;

@@ -1,74 +1,111 @@
-
-import React, { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { useStore } from '../store';
-import { MUSIC_PLAYLIST } from '../types';
+import React, { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
+import { useStore } from "../store";
+import { MUSIC_PLAYLIST } from "../types";
 
 const IntroOverlay: React.FC = () => {
   const introFinished = useStore((state) => state.introFinished);
   const setIntroFinished = useStore((state) => state.setIntroFinished);
   const audioRef = useRef<HTMLAudioElement>(null);
-  
+  const [logoLoaded, setLogoLoaded] = useState(false);
+
   useEffect(() => {
     // Intro Animation Sequence
     const tl = gsap.timeline({
-        onComplete: () => {
-             // Keep text visible until interaction? Or fade out?
-             // Prompt user to interact
-        }
+      onComplete: () => {
+        // Keep text visible until interaction? Or fade out?
+        // Prompt user to interact
+      },
     });
 
-    tl.fromTo("#intro-text", 
-      { opacity: 0, scale: 0.8, y: 20 },
+    // Animate logo first (main element)
+    tl.fromTo(
+      "#company-logo",
+      { opacity: 0, scale: 0.5, y: -30 },
       { opacity: 1, scale: 1, y: 0, duration: 2, ease: "power3.out" }
     )
-    .to("#intro-sub", { opacity: 1, duration: 1.5 }, "-=1");
+      .fromTo(
+        "#intro-text",
+        { opacity: 0, scale: 0.8, y: 20 },
+        { opacity: 1, scale: 1, y: 0, duration: 2, ease: "power3.out" },
+        "-=1"
+      )
+      .to("#intro-sub", { opacity: 1, duration: 1.5 }, "-=1");
 
     // Auto-dismiss after 6 seconds
     const timer = setTimeout(() => {
-        handleStart();
+      handleStart();
     }, 6000);
 
     return () => clearTimeout(timer);
   }, []);
 
   const handleStart = () => {
-      setIntroFinished(true);
-      if (audioRef.current) {
-          audioRef.current.volume = 0.4;
-          audioRef.current.play().catch(e => console.log("Autoplay blocked, waiting for interaction"));
-      }
+    setIntroFinished(true);
+    if (audioRef.current) {
+      audioRef.current.volume = 0.4;
+      audioRef.current
+        .play()
+        .catch((e) => console.log("Autoplay blocked, waiting for interaction"));
+    }
   };
 
   return (
     <>
       <audio ref={audioRef} src={MUSIC_PLAYLIST[0]} loop />
-      
+
       {/* Main Intro Screen */}
-      <div 
+      <div
         className={`fixed inset-0 z-40 flex flex-col items-center justify-center bg-black transition-opacity duration-1000 pointer-events-none
-        ${introFinished ? 'opacity-0' : 'opacity-100'}`}
+        ${introFinished ? "opacity-0" : "opacity-100"}`}
       >
-        <div className="text-center px-4">
-          <h1 id="intro-text" className="font-serif-display text-4xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-500 to-yellow-200 mb-6 drop-shadow-[0_0_15px_rgba(255,215,0,0.5)] opacity-0">
-            56 Moments байгууллагад<br/>
+        <div className="text-center px-4 flex flex-col items-center">
+          {/* Company Logo - Main Element */}
+          <img
+            id="company-logo"
+            src="/logo.png"
+            alt="Company Logo"
+            className="w-64 md:w-96 lg:w-[500px] h-auto mb-8 opacity-0 drop-shadow-[0_0_30px_rgba(255,215,0,0.6)]"
+            onLoad={() => setLogoLoaded(true)}
+            onError={(e) => {
+              console.warn(
+                "Company logo not found at /logo.png. Please add logo.png to the public folder."
+              );
+              // Hide logo if not found
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+
+          <h1
+            id="intro-text"
+            className="font-serif-display text-4xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-500 to-yellow-200 mb-6 drop-shadow-[0_0_15px_rgba(255,215,0,0.5)] opacity-0"
+          >
+            56 Moments байгууллагад
+            <br />
             <span className="text-white text-2xl md:text-4xl mt-4 block font-light tracking-widest font-cinzel">
               2026 ОНЫ ШИНЭ ЖИЛИЙН МЭНД ХҮРГЭЕ!
             </span>
           </h1>
-          <p id="intro-sub" className="text-blue-200 mt-8 font-light tracking-[0.3em] opacity-0 animate-pulse">
+          <p
+            id="intro-sub"
+            className="text-blue-200 mt-8 font-light tracking-[0.3em] opacity-0 animate-pulse"
+          >
             LOADING THE COSMIC GREETING...
           </p>
         </div>
       </div>
 
       {/* HUD - Minimal */}
-      <div className={`fixed inset-0 z-30 pointer-events-none transition-opacity duration-1000 ${introFinished ? 'opacity-100' : 'opacity-0'}`}>
+      <div
+        className={`fixed inset-0 z-30 pointer-events-none transition-opacity duration-1000 ${
+          introFinished ? "opacity-100" : "opacity-0"
+        }`}
+      >
         {/* Top Header */}
         <div className="absolute top-0 w-full p-6 flex justify-between items-start">
-             <div className="text-white/80 font-cinzel tracking-widest text-xs md:text-sm">
-                 56 MOMENTS // YEAR 2026
-             </div>
+          <div className="text-white/80 font-cinzel tracking-widest text-xs md:text-sm">
+            56 MOMENTS // YEAR 2026
+          </div>
         </div>
       </div>
     </>
