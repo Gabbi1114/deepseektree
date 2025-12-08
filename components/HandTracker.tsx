@@ -49,14 +49,42 @@ const HandTracker: React.FC = () => {
     const enableCam = async () => {
       if (!gestureRecognizer) return;
 
+      // Check if mediaDevices API is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error("Camera API not available. Please use HTTPS or localhost.");
+        // Check if we're on HTTP (not localhost)
+        const isLocalhost = window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname.startsWith('192.168.');
+        const isHTTPS = window.location.protocol === 'https:';
+        
+        if (!isLocalhost && !isHTTPS) {
+          console.warn("Camera requires HTTPS. Please access via https:// or use localhost");
+        }
+        return;
+      }
+
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: 'user',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          } 
+        });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.addEventListener('loadeddata', predictWebcam);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Camera access denied or error:", err);
+        if (err.name === 'NotAllowedError') {
+          console.warn("Camera permission denied. Please allow camera access in your browser settings.");
+        } else if (err.name === 'NotFoundError') {
+          console.warn("No camera found. Please connect a camera device.");
+        } else {
+          console.warn("Camera error:", err.message);
+        }
       }
     };
 
