@@ -66,6 +66,19 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
+      - name: Verify artifact contents before upload
+        run: |
+          echo "=== Files in dist/ ==="
+          find dist -type f -name "*.html" -o -name "*.js" | head -20
+          echo ""
+          echo "=== Verifying index.html in artifact ==="
+          if grep -q 'src=".*\.tsx"' dist/index.html; then
+            echo "ERROR: Artifact still contains .tsx reference!"
+            exit 1
+          else
+            echo "✓ Artifact HTML is correct"
+          fi
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -81,3 +94,9 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting 10 seconds for deployment to propagate..."
+          sleep 10
+          echo "Deployment URL: ${{ steps.deployment.outputs.page_url }}"
