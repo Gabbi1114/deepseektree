@@ -307,6 +307,19 @@ const InstaxGallery: React.FC = () => {
 
   const switchCooldown = useRef<number>(0);
 
+  // Preload all photos on mount to improve performance
+  useEffect(() => {
+    const basePath = (import.meta as any).env?.BASE_URL || "/";
+    const normalizedBase = basePath.endsWith("/") ? basePath : `${basePath}/`;
+    
+    // Preload all photos in the background
+    for (let i = 0; i < PHOTO_COUNT; i++) {
+      const img = new Image();
+      img.src = `${normalizedBase}photos/photo${i}.png`;
+      // Don't wait for load, just trigger browser cache
+    }
+  }, []);
+
   // Gesture Logic for Interaction
   useFrame((state) => {
     // Only processing specific gestures in GALAXY mode
