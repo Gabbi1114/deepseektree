@@ -254,7 +254,7 @@ const InstaxFrame: React.FC<{
         </mesh>
 
         {/* Image Area */}
-        <mesh position={[0, 0.25, 0.05]} rotation={[0, 0, Math.PI]}>
+        <mesh position={[0, 0.25, 0.05]}>
           <planeGeometry args={[3.1, 3.1]} />
           <meshBasicMaterial ref={materialRef} map={currentTexture} />
         </mesh>
