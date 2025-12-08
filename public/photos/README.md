@@ -40,8 +40,27 @@ Rename your photos to match this pattern:
 
 - **You don't need all 10 photos** - if you only have 5 photos, just add `photo0.jpg` through `photo4.jpg`. The rest will show placeholders.
 - **Supported formats:** `.jpg`, `.jpeg`, `.png`, `.webp`
-- **File size:** Try to keep photos under 2MB each for faster loading
+- **File size:** ⚠️ **IMPORTANT:** Keep photos under **1-2MB each** for faster loading. Large files (10MB+) will load very slowly or timeout.
 - **Aspect ratio:** Square photos (1:1) work best, but any ratio will work
+
+## Optimizing Large Photos
+
+If your photos are too large (over 2MB), you can optimize them:
+
+### Option 1: Use Online Tools
+- **TinyPNG** (https://tinypng.com/) - Compress PNG/JPG files
+- **Squoosh** (https://squoosh.app/) - Google's image compression tool
+- **ImageOptim** - Desktop app for Mac/Windows
+
+### Option 2: Convert to WebP
+WebP format provides much better compression:
+- Use **Squoosh** (https://squoosh.app/) to convert PNG/JPG to WebP
+- WebP files are typically 25-35% smaller than PNG/JPG with same quality
+- The gallery will automatically try WebP format if PNG fails
+
+### Option 3: Resize Before Adding
+- Resize photos to max 2000x2000 pixels (or smaller)
+- This reduces file size significantly while maintaining good quality for web display
 
 ## Example
 

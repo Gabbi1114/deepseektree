@@ -73,21 +73,43 @@ const loadPhotoTexture = (
     const format = formats[formatIndex];
     const photoPath = `${basePath}photos/photo${index}.${format}`;
 
+    // Set a longer timeout for large files (30 seconds)
+    const timeoutId = setTimeout(() => {
+      console.warn(`Timeout loading photo ${photoPath} (file may be too large). Trying next format.`);
+      tryLoadFormat(formatIndex + 1);
+    }, 30000); // 30-second timeout for large files
+
     try {
       loader.load(
         photoPath,
         (texture) => {
+          clearTimeout(timeoutId);
           // Successfully loaded!
           texture.flipY = true; // Flip Y to correct orientation
+          // Optimize texture for large images
+          texture.generateMipmaps = true;
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.magFilter = THREE.LinearFilter;
           if (onLoad) onLoad(texture);
         },
-        undefined, // onProgress
+        (progress) => {
+          // Log progress for large files
+          if (progress.total > 0) {
+            const percent = Math.round((progress.loaded / progress.total) * 100);
+            if (percent % 25 === 0) { // Log every 25%
+              console.log(`Loading photo ${index}: ${percent}%`);
+            }
+          }
+        },
         (error) => {
+          clearTimeout(timeoutId);
           // onError - try next format
+          console.warn(`Error loading photo ${photoPath}:`, error);
           tryLoadFormat(formatIndex + 1);
         }
       );
     } catch (error) {
+      clearTimeout(timeoutId);
       // If loader fails, try next format
       tryLoadFormat(formatIndex + 1);
     }
