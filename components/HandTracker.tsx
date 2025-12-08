@@ -94,11 +94,11 @@ const HandTracker: React.FC = () => {
       }
 
       try {
-        // Try with more flexible video constraints
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "user",
-            // Removed width/height constraints to be more compatible
+            width: { ideal: 640 },
+            height: { ideal: 480 },
           },
         });
         if (videoRef.current) {
@@ -113,12 +113,8 @@ const HandTracker: React.FC = () => {
           );
         } else if (err.name === "NotFoundError") {
           console.warn("No camera found. Please connect a camera device.");
-        } else if (err.name === "NotReadableError") {
-          console.warn(
-            "Camera is already in use by another application. Please close other apps using the camera."
-          );
         } else {
-          console.warn("Camera error:", err.name, err.message);
+          console.warn("Camera error:", err.message);
         }
       }
     };
