@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true # Cancel previous runs to prevent conflicts
 
 jobs:
   build:
@@ -32,7 +32,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
+        run: npm run build -- --mode production
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           NODE_ENV: production
@@ -42,8 +42,16 @@ jobs:
           echo "Checking build output..."
           ls -la dist/
           if [ -f "dist/index.html" ]; then
-            echo "index.html found"
-            cat dist/index.html | grep -o 'src="[^"]*"' || echo "No script src found"
+            echo "=== index.html content ==="
+            cat dist/index.html
+            echo ""
+            echo "=== Checking for script tags ==="
+            if grep -q 'src=".*\.tsx"' dist/index.html; then
+              echo "ERROR: HTML still contains .tsx reference - build transformation failed!"
+              exit 1
+            else
+              echo "✓ HTML correctly transformed - no .tsx references found"
+            fi
           else
             echo "ERROR: index.html not found in dist/"
             exit 1
