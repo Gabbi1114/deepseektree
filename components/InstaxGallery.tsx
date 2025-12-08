@@ -55,73 +55,44 @@ const loadPhotoTexture = (
   const placeholder = generatePlaceholderTexture(index);
 
   // Get base path - adjust for GitHub Pages deployment
-  // In Vite, BASE_URL is available at build time
-  // In development, use root path; in production, use the configured base
   const basePath = (import.meta as any).env?.BASE_URL || "/";
+  const photoPath = `${basePath}photos/photo${index}.png`;
 
-  // Try to load the actual photo (supports jpg, jpeg, png, webp)
-  const formats = ["png", "jpg", "jpeg", "webp"];
-  let attemptIndex = 0;
+  // Faster timeout - 10 seconds (files should be optimized now)
+  const timeoutId = setTimeout(() => {
+    console.warn(`Timeout loading photo ${photoPath}`);
+    if (onLoad) onLoad(placeholder);
+  }, 10000); // 10-second timeout
 
-  const tryLoadFormat = (formatIndex: number) => {
-    if (formatIndex >= formats.length) {
-      // All formats failed, use placeholder
-      if (onLoad) onLoad(placeholder);
-      return;
-    }
-
-    const format = formats[formatIndex];
-    const photoPath = `${basePath}photos/photo${index}.${format}`;
-
-    // Set a longer timeout for large files (30 seconds)
-    const timeoutId = setTimeout(() => {
-      console.warn(
-        `Timeout loading photo ${photoPath} (file may be too large). Trying next format.`
-      );
-      tryLoadFormat(formatIndex + 1);
-    }, 30000); // 30-second timeout for large files
-
-    try {
-      loader.load(
-        photoPath,
-        (texture) => {
-          clearTimeout(timeoutId);
-          // Successfully loaded!
-          texture.flipY = true; // Flip Y to correct orientation
-          // Optimize texture for large images
-          texture.generateMipmaps = true;
-          texture.minFilter = THREE.LinearMipmapLinearFilter;
-          texture.magFilter = THREE.LinearFilter;
-          if (onLoad) onLoad(texture);
-        },
-        (progress) => {
-          // Log progress for large files
-          if (progress.total > 0) {
-            const percent = Math.round(
-              (progress.loaded / progress.total) * 100
-            );
-            if (percent % 25 === 0) {
-              // Log every 25%
-              console.log(`Loading photo ${index}: ${percent}%`);
-            }
-          }
-        },
-        (error) => {
-          clearTimeout(timeoutId);
-          // onError - try next format
-          console.warn(`Error loading photo ${photoPath}:`, error);
-          tryLoadFormat(formatIndex + 1);
-        }
-      );
-    } catch (error) {
-      clearTimeout(timeoutId);
-      // If loader fails, try next format
-      tryLoadFormat(formatIndex + 1);
-    }
-  };
-
-  // Start trying to load
-  tryLoadFormat(0);
+  try {
+    loader.load(
+      photoPath,
+      (texture) => {
+        clearTimeout(timeoutId);
+        // Successfully loaded!
+        texture.flipY = true; // Flip Y to correct orientation
+        // Optimize for performance - disable mipmaps for faster loading
+        texture.generateMipmaps = false;
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        // Set texture format for better performance
+        texture.format = THREE.RGBAFormat;
+        texture.premultiplyAlpha = false;
+        if (onLoad) onLoad(texture);
+      },
+      undefined, // No progress callback for faster loading
+      (error) => {
+        clearTimeout(timeoutId);
+        // onError - use placeholder
+        console.warn(`Error loading photo ${photoPath}:`, error);
+        if (onLoad) onLoad(placeholder);
+      }
+    );
+  } catch (error) {
+    clearTimeout(timeoutId);
+    // If loader fails, use placeholder
+    if (onLoad) onLoad(placeholder);
+  }
 
   // Return placeholder immediately (will be replaced when image loads)
   return placeholder;
@@ -158,17 +129,33 @@ const InstaxFrame: React.FC<{
     }
   }, [currentTexture]);
 
-  // Load actual photo on mount
+  // Load actual photo on mount with priority loading
   useEffect(() => {
-    try {
-      loadPhotoTexture(index, (loadedTexture) => {
-        if (loadedTexture) {
-          setCurrentTexture(loadedTexture);
-        }
-      });
-    } catch (error) {
-      // Silently fail - use placeholder if image loading fails
-      console.warn(`Failed to load photo ${index}:`, error);
+    // Priority loading: Load first 3 photos immediately, others with delay
+    const PRIORITY_COUNT = 3;
+    const DELAY_MS = 500; // Delay between loading non-priority photos
+
+    const loadPhoto = () => {
+      try {
+        loadPhotoTexture(index, (loadedTexture) => {
+          if (loadedTexture) {
+            setCurrentTexture(loadedTexture);
+          }
+        });
+      } catch (error) {
+        // Silently fail - use placeholder if image loading fails
+        console.warn(`Failed to load photo ${index}:`, error);
+      }
+    };
+
+    if (index < PRIORITY_COUNT) {
+      // Load priority photos immediately
+      loadPhoto();
+    } else {
+      // Delay loading other photos to improve initial page load
+      const delay = (index - PRIORITY_COUNT) * DELAY_MS;
+      const timeoutId = setTimeout(loadPhoto, delay);
+      return () => clearTimeout(timeoutId);
     }
   }, [index]);
 
