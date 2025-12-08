@@ -84,6 +84,10 @@ const loadPhotoTexture = (
         undefined, // onProgress
         (error) => {
           // onError - try next format
+          // Only log final failure after all formats tried
+          if (formatIndex === formats.length - 1) {
+            console.warn(`Photo ${index} not found. Tried paths: ${formats.map(f => `${basePath}photos/photo${index}.${f}`).join(', ')}`);
+          }
           tryLoadFormat(formatIndex + 1);
         }
       );

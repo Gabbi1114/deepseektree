@@ -1,31 +1,54 @@
-
-import React, { useEffect, useRef, useState } from 'react';
-import { FilesetResolver, GestureRecognizer, Landmark } from '@mediapipe/tasks-vision';
-import { useStore } from '../store';
-import { GestureType } from '../types';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  FilesetResolver,
+  GestureRecognizer,
+  Landmark,
+} from "@mediapipe/tasks-vision";
+import { useStore } from "../store";
+import { GestureType } from "../types";
 
 const HAND_CONNECTIONS = [
-  [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
-  [0, 5], [5, 6], [6, 7], [7, 8], // Index
-  [5, 9], [9, 10], [10, 11], [11, 12], // Middle
-  [9, 13], [13, 14], [14, 15], [15, 16], // Ring
-  [13, 17], [0, 17], [17, 18], [18, 19], [19, 20] // Pinky & Palm
+  [0, 1],
+  [1, 2],
+  [2, 3],
+  [3, 4], // Thumb
+  [0, 5],
+  [5, 6],
+  [6, 7],
+  [7, 8], // Index
+  [5, 9],
+  [9, 10],
+  [10, 11],
+  [11, 12], // Middle
+  [9, 13],
+  [13, 14],
+  [14, 15],
+  [15, 16], // Ring
+  [13, 17],
+  [0, 17],
+  [17, 18],
+  [18, 19],
+  [19, 20], // Pinky & Palm
 ];
 
 const HandTracker: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
+  const [gestureRecognizer, setGestureRecognizer] =
+    useState<GestureRecognizer | null>(null);
   const requestRef = useRef<number>(0);
-  
+
   // State setters
   const setGesture = useStore((state) => state.setGesture);
   const setMode = useStore((state) => state.setMode);
   const setHandPosition = useStore((state) => state.setHandPosition);
 
   // Gesture Stability State
-  const gestureRetention = useRef<{ name: string; count: number }>({ name: '', count: 0 });
-  
+  const gestureRetention = useRef<{ name: string; count: number }>({
+    name: "",
+    count: 0,
+  });
+
   useEffect(() => {
     const initMediaPipe = async () => {
       const vision = await FilesetResolver.forVisionTasks(
@@ -33,11 +56,12 @@ const HandTracker: React.FC = () => {
       );
       const recognizer = await GestureRecognizer.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task",
-          delegate: "GPU"
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task",
+          delegate: "GPU",
         },
         runningMode: "VIDEO",
-        numHands: 1
+        numHands: 1,
       });
       setGestureRecognizer(recognizer);
     };
@@ -51,39 +75,50 @@ const HandTracker: React.FC = () => {
 
       // Check if mediaDevices API is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.error("Camera API not available. Please use HTTPS or localhost.");
+        console.error(
+          "Camera API not available. Please use HTTPS or localhost."
+        );
         // Check if we're on HTTP (not localhost)
-        const isLocalhost = window.location.hostname === 'localhost' || 
-                           window.location.hostname === '127.0.0.1' ||
-                           window.location.hostname.startsWith('192.168.');
-        const isHTTPS = window.location.protocol === 'https:';
-        
+        const isLocalhost =
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname.startsWith("192.168.");
+        const isHTTPS = window.location.protocol === "https:";
+
         if (!isLocalhost && !isHTTPS) {
-          console.warn("Camera requires HTTPS. Please access via https:// or use localhost");
+          console.warn(
+            "Camera requires HTTPS. Please access via https:// or use localhost"
+          );
         }
         return;
       }
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'user',
-            width: { ideal: 640 },
-            height: { ideal: 480 }
-          } 
+        // Try with more flexible video constraints
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            // Removed width/height constraints to be more compatible
+          },
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.addEventListener('loadeddata', predictWebcam);
+          videoRef.current.addEventListener("loadeddata", predictWebcam);
         }
       } catch (err: any) {
         console.error("Camera access denied or error:", err);
-        if (err.name === 'NotAllowedError') {
-          console.warn("Camera permission denied. Please allow camera access in your browser settings.");
-        } else if (err.name === 'NotFoundError') {
+        if (err.name === "NotAllowedError") {
+          console.warn(
+            "Camera permission denied. Please allow camera access in your browser settings."
+          );
+        } else if (err.name === "NotFoundError") {
           console.warn("No camera found. Please connect a camera device.");
+        } else if (err.name === "NotReadableError") {
+          console.warn(
+            "Camera is already in use by another application. Please close other apps using the camera."
+          );
         } else {
-          console.warn("Camera error:", err.message);
+          console.warn("Camera error:", err.name, err.message);
         }
       }
     };
@@ -91,35 +126,45 @@ const HandTracker: React.FC = () => {
     if (gestureRecognizer) {
       enableCam();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gestureRecognizer]);
 
   // Helper to check if a finger is extended (Tip above PIP in camera coordinates)
   // MediaPipe: y is 0 at top, 1 at bottom. So tip.y < pip.y means UP.
-  const isFingerUp = (landmarks: Landmark[], tipIdx: number, pipIdx: number) => {
+  const isFingerUp = (
+    landmarks: Landmark[],
+    tipIdx: number,
+    pipIdx: number
+  ) => {
     return landmarks[tipIdx].y < landmarks[pipIdx].y;
   };
 
   const predictWebcam = () => {
     if (!videoRef.current || !gestureRecognizer) return;
-    
+
     // Safety check for valid video dimensions
-    if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+    if (
+      videoRef.current.videoWidth === 0 ||
+      videoRef.current.videoHeight === 0
+    ) {
       requestRef.current = requestAnimationFrame(predictWebcam);
       return;
     }
 
     const nowInMs = Date.now();
-    const results = gestureRecognizer.recognizeForVideo(videoRef.current, nowInMs);
+    const results = gestureRecognizer.recognizeForVideo(
+      videoRef.current,
+      nowInMs
+    );
 
-    let detectedGesture: GestureType = 'NONE';
-    let rawCategory = 'None';
+    let detectedGesture: GestureType = "NONE";
+    let rawCategory = "None";
     let score = 0;
 
     // 1. Analyze Gestures (Model + Manual Heuristics)
     if (results.landmarks && results.landmarks.length > 0) {
       const landmarks = results.landmarks[0];
-      
+
       // Get base classification
       if (results.gestures.length > 0) {
         rawCategory = results.gestures[0][0].categoryName;
@@ -131,75 +176,75 @@ const HandTracker: React.FC = () => {
       const middleUp = isFingerUp(landmarks, 12, 10);
       const ringUp = isFingerUp(landmarks, 16, 14);
       const pinkyUp = isFingerUp(landmarks, 20, 18);
-      
+
       // Heuristic Override
       // Case: Three Fingers (Index, Middle, Ring UP, Pinky DOWN)
       if (indexUp && middleUp && ringUp && !pinkyUp) {
-          detectedGesture = 'THREE_FINGERS';
-      } 
+        detectedGesture = "THREE_FINGERS";
+      }
       // Case: Victory (Index, Middle UP, Ring, Pinky DOWN) - matches model usually
       else if (indexUp && middleUp && !ringUp && !pinkyUp) {
-          detectedGesture = 'VICTORY';
+        detectedGesture = "VICTORY";
       }
       // Case: Open Palm (All 4 fingers up)
       else if (indexUp && middleUp && ringUp && pinkyUp) {
-          detectedGesture = 'OPEN_PALM';
+        detectedGesture = "OPEN_PALM";
       }
       // Case: Fist (All down)
       else if (!indexUp && !middleUp && !ringUp && !pinkyUp) {
-          detectedGesture = 'CLOSED_FIST';
+        detectedGesture = "CLOSED_FIST";
       }
       // Fallback to model if ambiguous
       else if (score > 0.5) {
-          if (rawCategory === 'Victory') detectedGesture = 'VICTORY';
-          else if (rawCategory === 'Open_Palm') detectedGesture = 'OPEN_PALM';
-          else if (rawCategory === 'Closed_Fist') detectedGesture = 'CLOSED_FIST';
+        if (rawCategory === "Victory") detectedGesture = "VICTORY";
+        else if (rawCategory === "Open_Palm") detectedGesture = "OPEN_PALM";
+        else if (rawCategory === "Closed_Fist") detectedGesture = "CLOSED_FIST";
       }
     }
 
     // 2. Stability / Debounce
-    if (detectedGesture !== 'NONE') {
-        if (detectedGesture === gestureRetention.current.name) {
-            gestureRetention.current.count++;
-        } else {
-            gestureRetention.current.name = detectedGesture;
-            gestureRetention.current.count = 1;
-        }
+    if (detectedGesture !== "NONE") {
+      if (detectedGesture === gestureRetention.current.name) {
+        gestureRetention.current.count++;
+      } else {
+        gestureRetention.current.name = detectedGesture;
+        gestureRetention.current.count = 1;
+      }
 
-        const STABILITY_THRESHOLD = 5; // Lower threshold for faster interaction response
-        
-        if (gestureRetention.current.count > STABILITY_THRESHOLD) {
-            // Logic handled in store/components, just set current stable gesture
-            setGesture(detectedGesture);
+      const STABILITY_THRESHOLD = 5; // Lower threshold for faster interaction response
 
-            // Global Mode Switching (Open/Fist only)
-             if (detectedGesture === 'CLOSED_FIST') {
-                setMode('TREE');
-            }
-            if (detectedGesture === 'OPEN_PALM' && rawCategory === 'Open_Palm') { 
-                // Only switch to GALAXY if it's a clear open palm, 
-                // might be handled by InstaxGallery logic if in view mode
-                setMode('GALAXY');
-            }
+      if (gestureRetention.current.count > STABILITY_THRESHOLD) {
+        // Logic handled in store/components, just set current stable gesture
+        setGesture(detectedGesture);
+
+        // Global Mode Switching (Open/Fist only)
+        if (detectedGesture === "CLOSED_FIST") {
+          setMode("TREE");
         }
+        if (detectedGesture === "OPEN_PALM" && rawCategory === "Open_Palm") {
+          // Only switch to GALAXY if it's a clear open palm,
+          // might be handled by InstaxGallery logic if in view mode
+          setMode("GALAXY");
+        }
+      }
     } else {
-        setGesture('NONE');
-        gestureRetention.current.count = 0;
+      setGesture("NONE");
+      gestureRetention.current.count = 0;
     }
 
     // 3. Handle Hand Position for Orbital Movement
     if (results.landmarks && results.landmarks.length > 0) {
-        const hand = results.landmarks[0];
-        // Landmark 9 (Middle Finger MCP) is a good stable center point
-        const point = hand[9];
-        
-        // Normalize to -1 to 1
-        const x = - (point.x - 0.5) * 2; 
-        const y = (point.y - 0.5) * 2;
+      const hand = results.landmarks[0];
+      // Landmark 9 (Middle Finger MCP) is a good stable center point
+      const point = hand[9];
 
-        setHandPosition({ x, y });
+      // Normalize to -1 to 1
+      const x = -(point.x - 0.5) * 2;
+      const y = (point.y - 0.5) * 2;
+
+      setHandPosition({ x, y });
     } else {
-        setHandPosition({ x: 0, y: 0 });
+      setHandPosition({ x: 0, y: 0 });
     }
 
     requestRef.current = requestAnimationFrame(predictWebcam);
@@ -207,12 +252,12 @@ const HandTracker: React.FC = () => {
 
   return (
     <div className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none overflow-hidden">
-       {/* Video must stay in DOM for MediaPipe to work, but hidden from user */}
-      <video 
-        ref={videoRef} 
-        className="w-full h-full object-cover" 
-        autoPlay 
-        muted 
+      {/* Video must stay in DOM for MediaPipe to work, but hidden from user */}
+      <video
+        ref={videoRef}
+        className="w-full h-full object-cover"
+        autoPlay
+        muted
         playsInline
       />
     </div>
