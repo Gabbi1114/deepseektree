@@ -60,7 +60,7 @@ const loadPhotoTexture = (
   const basePath = (import.meta as any).env?.BASE_URL || "/";
 
   // Try to load the actual photo (supports jpg, jpeg, png, webp)
-  const formats = ["jpg", "jpeg", "png", "webp"];
+  const formats = ["png", "jpg", "jpeg", "webp"];
   let attemptIndex = 0;
 
   const tryLoadFormat = (formatIndex: number) => {
