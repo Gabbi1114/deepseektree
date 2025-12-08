@@ -84,6 +84,14 @@ jobs:
         with:
           path: "./dist"
 
+      - name: List all files in artifact
+        run: |
+          echo "=== Complete file tree in dist/ ==="
+          find dist -type f | sort
+          echo ""
+          echo "=== Size of dist/ ==="
+          du -sh dist/
+
   deploy:
     environment:
       name: github-pages
