@@ -893,6 +893,39 @@ const PresentsGroup: React.FC = () => {
   );
 };
 
+// Camera Controller to zoom out in TREE mode
+const CameraController: React.FC<{ controlsRef: React.RefObject<any> }> = ({
+  controlsRef,
+}) => {
+  const mode = useStore((state) => state.mode);
+  const viewMode = useStore((state) => state.viewMode);
+
+  useFrame((state, delta) => {
+    if (!controlsRef.current || viewMode) return;
+
+    // In TREE mode, zoom out to max distance
+    if (mode === "TREE") {
+      const targetDistance = 60; // maxDistance
+      const camera = state.camera;
+      const currentDistance = camera.position.length();
+
+      // Smoothly zoom out if not already at max
+      if (currentDistance < targetDistance - 0.5) {
+        const direction = camera.position.clone().normalize();
+        const newDistance = THREE.MathUtils.lerp(
+          currentDistance,
+          targetDistance,
+          delta * 2
+        );
+        camera.position.copy(direction.multiplyScalar(newDistance));
+        controlsRef.current.update();
+      }
+    }
+  });
+
+  return null;
+};
+
 // Scene Content Wrapper to handle Rotation
 const SceneContent: React.FC = () => {
   const groupRef = useRef<THREE.Group>(null);
@@ -969,11 +1002,12 @@ const SceneContent: React.FC = () => {
 
 const Experience: React.FC = () => {
   const viewMode = useStore((state) => state.viewMode);
+  const controlsRef = useRef<any>(null);
 
   return (
     <div className="w-full h-screen bg-black relative">
       <Canvas
-        camera={{ position: [0, 2, 45], fov: 45 }}
+        camera={{ position: [0, 2, 60], fov: 45 }}
         gl={{
           antialias: true,
           toneMappingExposure: 1.2,
@@ -1059,14 +1093,18 @@ const Experience: React.FC = () => {
             <Vignette eskil={false} offset={0.1} darkness={0.7} />
           </EffectComposer>
 
-          {/* Controls - Increased autoRotateSpeed */}
+          {/* Camera Controller for TREE mode zoom */}
+          <CameraController controlsRef={controlsRef} />
+
+          {/* Controls - Increased autoRotateSpeed by 30% */}
           <OrbitControls
+            ref={controlsRef}
             enablePan={false}
             enableZoom={true}
             minDistance={10}
             maxDistance={60}
             autoRotate={!viewMode} // Disable auto-rotation when viewing a photo
-            autoRotateSpeed={2.0}
+            autoRotateSpeed={2.6}
             maxPolarAngle={Math.PI / 1.5}
             minPolarAngle={Math.PI / 3.5}
           />
