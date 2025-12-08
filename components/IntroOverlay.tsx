@@ -63,13 +63,14 @@ const IntroOverlay: React.FC = () => {
           {/* Company Logo - Main Element */}
           <img
             id="company-logo"
-            src="/logo.png"
+            src={`${(import.meta as any).env?.BASE_URL || "/"}logo.png`}
             alt="Company Logo"
             className="w-64 md:w-96 lg:w-[500px] h-auto mb-8 opacity-0 drop-shadow-[0_0_30px_rgba(255,215,0,0.6)]"
             onLoad={() => setLogoLoaded(true)}
             onError={(e) => {
+              const basePath = (import.meta as any).env?.BASE_URL || "/";
               console.warn(
-                "Company logo not found at /logo.png. Please add logo.png to the public folder."
+                `Company logo not found at ${basePath}logo.png. Please add logo.png to the public folder.`
               );
               // Hide logo if not found
               (e.target as HTMLImageElement).style.display = "none";

@@ -901,6 +901,7 @@ const CameraController: React.FC<{ controlsRef: React.RefObject<any> }> = ({
   const viewMode = useStore((state) => state.viewMode);
   const lastModeRef = useRef<string>(mode);
   const hasSetInitialZoomRef = useRef<boolean>(false);
+  const zoomAnimationRef = useRef<number>(0);
 
   useFrame((state, delta) => {
     if (!controlsRef.current || viewMode) return;
@@ -915,22 +916,34 @@ const CameraController: React.FC<{ controlsRef: React.RefObject<any> }> = ({
 
         // Smoothly zoom out to max only on initial switch
         if (currentDistance < targetDistance - 0.5) {
+          // Use faster, more efficient zoom
+          zoomAnimationRef.current += delta * 3;
+          const progress = Math.min(zoomAnimationRef.current, 1);
+
           const direction = camera.position.clone().normalize();
           const newDistance = THREE.MathUtils.lerp(
             currentDistance,
             targetDistance,
-            delta * 3
+            progress
           );
           camera.position.copy(direction.multiplyScalar(newDistance));
           controlsRef.current.update();
+
+          // Stop animation once complete
+          if (progress >= 1) {
+            hasSetInitialZoomRef.current = true;
+            zoomAnimationRef.current = 0;
+          }
         } else {
           // Once at max, allow manual zooming
           hasSetInitialZoomRef.current = true;
+          zoomAnimationRef.current = 0;
         }
       }
     } else {
-      // Reset flag when not in TREE mode
+      // Reset flags when not in TREE mode
       hasSetInitialZoomRef.current = false;
+      zoomAnimationRef.current = 0;
     }
 
     lastModeRef.current = mode;
