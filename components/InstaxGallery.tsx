@@ -71,7 +71,9 @@ const loadPhotoTexture = (
     }
 
     const format = formats[formatIndex];
-    const photoPath = `${basePath}photos/photo${index}.${format}`;
+    // Ensure basePath ends with / and construct the full path
+    const normalizedBase = basePath.endsWith('/') ? basePath : `${basePath}/`;
+    const photoPath = `${normalizedBase}photos/photo${index}.${format}`;
 
     try {
       loader.load(
