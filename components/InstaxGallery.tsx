@@ -75,7 +75,9 @@ const loadPhotoTexture = (
 
     // Set a longer timeout for large files (30 seconds)
     const timeoutId = setTimeout(() => {
-      console.warn(`Timeout loading photo ${photoPath} (file may be too large). Trying next format.`);
+      console.warn(
+        `Timeout loading photo ${photoPath} (file may be too large). Trying next format.`
+      );
       tryLoadFormat(formatIndex + 1);
     }, 30000); // 30-second timeout for large files
 
@@ -95,8 +97,11 @@ const loadPhotoTexture = (
         (progress) => {
           // Log progress for large files
           if (progress.total > 0) {
-            const percent = Math.round((progress.loaded / progress.total) * 100);
-            if (percent % 25 === 0) { // Log every 25%
+            const percent = Math.round(
+              (progress.loaded / progress.total) * 100
+            );
+            if (percent % 25 === 0) {
+              // Log every 25%
               console.log(`Loading photo ${index}: ${percent}%`);
             }
           }
