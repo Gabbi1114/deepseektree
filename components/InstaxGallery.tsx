@@ -58,8 +58,12 @@ const loadPhotoTexture = (
   // In Vite, BASE_URL is available at build time
   // In development, use root path; in production, use the configured base
   const basePath = (import.meta as any).env?.BASE_URL || "/";
+  // Ensure basePath ends with a slash to avoid path issues
+  // e.g., "/deepseektree" -> "/deepseektree/" so we get "/deepseektree/photos/" not "/deepseektreephotos/"
+  const normalizedBase = basePath.endsWith("/") ? basePath : `${basePath}/`;
 
-  // Try to load the actual photo (supports jpg, jpeg, png, webp)
+  // Try to load the actual photo (supports png, jpg, jpeg, webp)
+  // Prioritize PNG since that's what the files are
   const formats = ["png", "jpg", "jpeg", "webp"];
   let attemptIndex = 0;
 
@@ -71,7 +75,7 @@ const loadPhotoTexture = (
     }
 
     const format = formats[formatIndex];
-    const photoPath = `${basePath}photos/photo${index}.${format}`;
+    const photoPath = `${normalizedBase}photos/photo${index}.${format}`;
 
     try {
       loader.load(
